@@ -2,13 +2,13 @@
 
   <!-- motor node -->
   <node pkg="rate_control" type="rate_control" name="kf_ratecontrol">
-    <param name="kp" value="0.1"/>
+    <param name="kp" value="2.0"/>
     <param name="ki" value="-0.00001"/>
     <param name="period" value="0.04"/>
     <param name="imax" value="0.5"/>
-    <remap from="/kf_ratecontrol/motors" to="/vrep/twistCommand"/>
-    <remap from="/kf_ratecontrol/command" to="/teleop/twistOut"/>
-    <remap from="/kf_ratecontrol/imu" to="/vrep/twistStatus"/>
+    <!-- <remap from="/kf_ratecontrol/motors" to="/cmd_vel"/> -->
+    <remap from="/kf_ratecontrol/command" to="/cmd_mux/cmd_vel"/>
+    <remap from="/kf_ratecontrol/imu" to="/imu/data"/>
 
   </node>
 

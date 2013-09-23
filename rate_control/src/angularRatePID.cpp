@@ -34,9 +34,10 @@ class AngularRateControl {
 	
     protected: // ROS Callbacks
         void imu_callback(const sensor_msgs::Imu& msg) {
-           if(lastIMU_ == ros::Time(0))
+           if(lastIMU_ == ros::Time(0.0))
                lastIMU_ = ros::Time::now() - ros::Duration(0.01);
-           double error = msg.angular_velocity.z - setpt_.angular.z;
+           // setpt_ and msg have opposite senses of Z, so we add
+           double error = setpt_.angular.z + msg.angular_velocity.z;
            ros::Duration deltaT = msg.header.stamp - lastIMU_;
            lastIMU_ = msg.header.stamp;
            commandZ_ = Pid_.updatePid(error, deltaT);
@@ -52,7 +53,8 @@ class AngularRateControl {
             geometry_msgs::Twist output;
             //Make sure we keep the rest of the output the same.
             output = setpt_;
-            output.angular.z = commandZ_;
+            // Correct for the sign of the output
+            output.angular.z = -commandZ_;
             motor_pub_.publish(output);            
         }
 

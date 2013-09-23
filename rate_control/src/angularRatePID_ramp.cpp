@@ -27,6 +27,7 @@ class AngularRateControl {
         double max_;
         int steps_;
         double period_;
+        double increment_;
         ros::Time lastIMU_;
 
 
@@ -48,10 +49,11 @@ class AngularRateControl {
 
         void do_pid(const ros::TimerEvent&)
         {
+            ROS_INFO("Starting, steps %d", steps_);
             if (steps_ > 0)
             {
-                steps_--;
-                setpt_.angular.z += max_ / double(steps_);
+                steps_ --;
+                setpt_.angular.z += increment_;
                 motor_pub_.publish(setpt_);
             }
             else
@@ -75,9 +77,13 @@ class AngularRateControl {
             nh_.param("imax",imax_,1E9);
             nh_.param("period",period_,0.05);
 
+            increment_ = max_ / double(steps_);
+
             Pid_.initPid(kp_,ki_,kd_,imax_,-imax_);
             setpt_.linear.x = 0;
             setpt_.angular.z = 0;
+            
+            ROS_INFO("Starting, steps %d", steps_);
 
             // Make sure TF is ready
             ros::Duration(0.5).sleep();
@@ -101,6 +107,7 @@ int main(int argc, char * argv[])
     ros::init(argc,argv,"RateControl");
     AngularRateControl arc;
 
+            ROS_INFO("Starting, steps %d", 21);
     ros::spin();
     return 0;
 }
