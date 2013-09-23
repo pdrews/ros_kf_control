@@ -1,0 +1,13 @@
+<launch>
+
+  <!-- motor node -->
+  <node pkg="rate_control" type="rate_ramp" name="kf_ratecontrol">
+    <param name="o_max" value="1.0"/>
+    <param name="steps" value="400"/>
+    <remap from="/kf_ratecontrol/motors" to="/vrep/twistCommand"/>
+    <remap from="/kf_ratecontrol/command" to="/teleop/twistOut"/>
+    <remap from="/kf_ratecontrol/imu" to="/vrep/twistStatus"/>
+
+  </node>
+
+</launch>
