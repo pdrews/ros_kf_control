@@ -48,6 +48,7 @@ import tf
 
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Int32
 
 from cv_bridge import CvBridge, CvBridgeError
@@ -108,6 +109,7 @@ class ImageCbDetector:
 
       #not sure why opencv functions return non opencv compatible datatypes... but they do so we'll convert
       corners_cv = cv.CreateMat(2, corners_x * corners_y, cv.CV_32FC1)
+      rospy.logwarn("Assigned the corners matrix %d", (object_points == None))
       for i in range(corners_x * corners_y):
         cv.SetReal2D(corners_cv, 0, i, corners[i][0])
         cv.SetReal2D(corners_cv, 1, i, corners[i][1])
@@ -135,6 +137,7 @@ class ImageCbDetectorNode:
     self.image_sub = rospy.Subscriber("image_stream", Image, self.callback)
     self.caminfo_sub = rospy.Subscriber("camera_info", CameraInfo, self.cam_info_cb) 
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
+    self.tf_pub = tf.TransformBroadcaster()
     self.pan_pub = rospy.Publisher("pan_rate", Int32)
     self.pan_sub = rospy.Publisher("pan_position", Int32, self.pan_callback)
     self.pose_calc = rospy.Timer(rospy.Duration(1.0), self.find_checkerboard_timer_callback)
@@ -199,6 +202,7 @@ class ImageCbDetectorNode:
 
     corners, model = self.im_cb_detector.detect(image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling)
 
+    rospy.logwarn("%d %d %d", (corners == None), (model == None), (self.cam_info == None))
     if corners != None and model != None and self.cam_info != None:
       #find the pose of the checkerboard
       rot = cv.CreateMat(3, 1, cv.CV_32FC1)
@@ -248,8 +252,22 @@ class ImageCbDetectorNode:
       board_pose.pose.orientation.w = tf_rot[3]
       rospy.logdebug("%s" % board_pose)
 
+      board_tf = TransformStamped()
+      board_tf.header = ros_image.header
+      board_tf.header.frame_id = "/frontCamera"
+      board_tf.child_frame_id = "/checkerboard"
+      board_tf.transform.translation.x = tf_trans[0]
+      board_tf.transform.translation.y = tf_trans[1]
+      board_tf.transform.translation.z = tf_trans[2]
+      board_tf.transform.rotation.x = tf_rot[0]
+      board_tf.transform.rotation.y = tf_rot[1]
+      board_tf.transform.rotation.z = tf_rot[2]
+      board_tf.transform.rotation.w = tf_rot[3]
+
       #we'll publish the pose so we can display it in rviz
       self.pose_pub.publish(board_pose)
+      rospy.logwarn( 'Publishing transform')
+      self.tf_pub.publish(board_tf)
       return board_pose
 
 def cb_detector_main(argv=None):
