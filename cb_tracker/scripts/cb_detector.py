@@ -131,6 +131,7 @@ class ImageCbDetectorNode:
     self.spacing_y = rospy.get_param('~spacing_y', None)
     self.width_scaling = rospy.get_param('~width_scaling', 1)
     self.height_scaling = rospy.get_param('~height_scaling', 1)
+    self.base_frame = rospy.get_param('~baseframe', "/world")
 
     self.im_cb_detector = ImageCbDetector()
 
@@ -276,7 +277,7 @@ class ImageCbDetectorNode:
               tf_rot,
               ros_image.header.stamp,
               "checkerboard",
-              "frontCamera")
+              self.base_frame)
 
       return board_pose
 

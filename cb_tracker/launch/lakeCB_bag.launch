@@ -6,9 +6,12 @@
     <param name="corners_y" type="int" value="8" />
     <param name="spacing_x" type="double" value="0.1" />
     <param name="spacing_y" type="double" value="0.1" />
-    <param name="baseframe" type="string" value="kingfisher/axis" />
+    <param name="baseframe" type="string" value="/kingfisher/axis" />
     <remap from="image_stream" to="/axis/image_decomp" />
     <remap from="camera_info" to="/axis/camera_info" />
   </node>
+
+  <node pkg="image_transport" type="republish" name="img_repub" args="compressed in:=axis/image_raw raw out:=axis/image_decomp" />
+
 
 </launch>
