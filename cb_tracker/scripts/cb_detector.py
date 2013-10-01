@@ -90,10 +90,10 @@ class ImageCbDetector:
 
       #uncomment to debug chessboard detection
       rospy.logwarn( 'Chessboard found')
-      #cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
-      #cv.NamedWindow("image_scaled")
-      #cv.ShowImage("image_scaled", image_scaled)
-      #cv.WaitKey(600)
+      cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
+      cv.NamedWindow("image_scaled")
+      cv.ShowImage("image_scaled", image_scaled)
+      cv.WaitKey(600)
 
       object_points = None
 
@@ -109,7 +109,7 @@ class ImageCbDetector:
 
       #not sure why opencv functions return non opencv compatible datatypes... but they do so we'll convert
       corners_cv = cv.CreateMat(2, corners_x * corners_y, cv.CV_32FC1)
-      rospy.logwarn("Assigned the corners matrix %d", (object_points == None))
+      rospy.logwarn("Assigned the corners matrix %d", (corners_cv == None))
       for i in range(corners_x * corners_y):
         cv.SetReal2D(corners_cv, 0, i, corners[i][0])
         cv.SetReal2D(corners_cv, 1, i, corners[i][1])
@@ -252,22 +252,32 @@ class ImageCbDetectorNode:
       board_pose.pose.orientation.w = tf_rot[3]
       rospy.logdebug("%s" % board_pose)
 
-      board_tf = TransformStamped()
-      board_tf.header = ros_image.header
-      board_tf.header.frame_id = "/frontCamera"
-      board_tf.child_frame_id = "/checkerboard"
-      board_tf.transform.translation.x = tf_trans[0]
-      board_tf.transform.translation.y = tf_trans[1]
-      board_tf.transform.translation.z = tf_trans[2]
-      board_tf.transform.rotation.x = tf_rot[0]
-      board_tf.transform.rotation.y = tf_rot[1]
-      board_tf.transform.rotation.z = tf_rot[2]
-      board_tf.transform.rotation.w = tf_rot[3]
+#      board_tf = TransformStamped()
+#      board_tf.header = ros_image.header
+#      board_tf.header.frame_id = "/frontCamera"
+#      board_tf.child_frame_id = "/checkerboard"
+#      board_tf.transform.translation.x = tf_trans[0]
+#      board_tf.transform.translation.y = tf_trans[1]
+#      board_tf.transform.translation.z = tf_trans[2]
+#      board_tf.transform.rotation.x = tf_rot[0]
+#      board_tf.transform.rotation.y = tf_rot[1]
+#      board_tf.transform.rotation.z = tf_rot[2]
+#      board_tf.transform.rotation.w = tf_rot[3]
 
       #we'll publish the pose so we can display it in rviz
       self.pose_pub.publish(board_pose)
       rospy.logwarn( 'Publishing transform')
-      self.tf_pub.publish(board_tf)
+
+      #Correct board_pose transform axis, x and y are reversed
+      tf_trans[0] = -tf_trans[0]
+      tf_trans[1] = -tf_trans[1]
+
+      self.tf_pub.sendTransform(tf_trans,
+              tf_rot,
+              ros_image.header.stamp,
+              "checkerboard",
+              "frontCamera")
+
       return board_pose
 
 def cb_detector_main(argv=None):

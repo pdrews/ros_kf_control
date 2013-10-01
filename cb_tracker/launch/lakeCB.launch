@@ -4,10 +4,10 @@
         type="cb_detector.py" name="cb_detector" >
     <param name="corners_x" type="int" value="4" />
     <param name="corners_y" type="int" value="4" />
-    <param name="spacking_x" type="double" value="1.0" />
-    <param name="spacing_y" type="double" value="1.0" />
+    <param name="spacing_x" type="double" value="0.25" />
+    <param name="spacing_y" type="double" value="0.25" />
     <remap from="image_stream" to="/vrep/visionSensor" />
-    <remap from="camera_info" to="visionSensorInfo" />
+    <remap from="camera_info" to="/vrep/visionSensorInfo" />
   </node>
 
 </launch>
