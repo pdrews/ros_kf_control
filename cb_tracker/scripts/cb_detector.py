@@ -49,10 +49,13 @@ import tf
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import TwistStamped
 from std_msgs.msg import Int32
 
 from cv_bridge import CvBridge, CvBridgeError
 #from kf_code.srv import GetCheckerboardPose, GetCheckerboardPoseResponse
+
+global_x_error = 0
 
 class ImageCbDetector:
   def get_board_corners(self, corners, corners_x, corners_y):
@@ -61,6 +64,7 @@ class ImageCbDetector:
 
   def detect(self, image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling):
     #resize the image base on the scaling parameters we've been configured with
+    global global_x_error
     scaled_width = int(.5 + image.width * width_scaling)
     scaled_height = int(.5 + image.height * height_scaling)
     
@@ -73,6 +77,11 @@ class ImageCbDetector:
 
     if found:
       board_corners = self.get_board_corners(corners, corners_x, corners_y)
+
+      #find the x center for visual servoing
+      global_x_error = (scaled_width / 2.0) - board_corners[0][0] + 0.5 * (board_corners[0][0] - board_corners[3][0])
+      global_x_error = global_x_error / (scaled_width / 2.0)
+      rospy.loginfo ("x_error is %d", global_x_error);
       
       #find the perimeter of the checkerboard
       perimeter = 0.0
@@ -89,11 +98,11 @@ class ImageCbDetector:
       corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS | cv.CV_TERMCRIT_ITER, 30, 0.1))
 
       #uncomment to debug chessboard detection
-      rospy.logwarn( 'Chessboard found')
-      cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
-      cv.NamedWindow("image_scaled")
-      cv.ShowImage("image_scaled", image_scaled)
-      cv.WaitKey(600)
+      # rospy.logwarn( 'Chessboard found')
+      # cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
+      # cv.NamedWindow("image_scaled")
+      # cv.ShowImage("image_scaled", image_scaled)
+      # cv.WaitKey(600)
 
       object_points = None
 
@@ -132,6 +141,8 @@ class ImageCbDetectorNode:
     self.width_scaling = rospy.get_param('~width_scaling', 1)
     self.height_scaling = rospy.get_param('~height_scaling', 1)
     self.base_frame = rospy.get_param('~baseframe', "/world")
+    self.mixRatio = rospy.get_param('~mixratio', 1.0)
+    self.kp = rospy.get_param("~kp", 100.0)
 
     self.im_cb_detector = ImageCbDetector()
 
@@ -140,12 +151,13 @@ class ImageCbDetectorNode:
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
     self.tf_pub = tf.TransformBroadcaster()
     self.pan_pub = rospy.Publisher("pan_rate", Int32)
-    self.pan_sub = rospy.Publisher("pan_position", Int32, self.pan_callback)
+    self.pan_sub = rospy.Subscriber("imu_rate", TwistStamped, self.imu_callback)
     self.pose_calc = rospy.Timer(rospy.Duration(1.0), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
     self.mutex = threading.RLock()
     self.cam_info = None
     self.ros_image = None
+    self.lastAngular = 0.0
 
   def intrinsic_matrix_from_info(self, cam_info):
     intrinsic_matrix = cv.CreateMat(3, 3, cv.CV_32FC1)
@@ -175,9 +187,12 @@ class ImageCbDetectorNode:
 #      if self.pose_srv == None:
 #        self.attempt_to_advertise()
 
-  def pan_callback(self, pan_pose):
-    output = self.pan_setpoint - pan_pose
-    self.pan_pub.publish(output)
+  def imu_callback(self, pose):
+    output = global_x_error + self.mixRatio * pose.twist.angular.z
+    output = output * self.kp
+    rospy.logwarn("servo error %f rate error %f", global_x_error, (pose.twist.angular.z - self.lastAngular))
+    self.pan_pub.publish(std_msgs.Int32(output))
+    self.lastAngular = pose.twist.angular.z
     
 
 #  def find_checkerboard_service(self, req):
@@ -270,8 +285,8 @@ class ImageCbDetectorNode:
       rospy.logwarn( 'Publishing transform')
 
       #Correct board_pose transform axis, x and y are reversed
-      tf_trans[0] = -tf_trans[0]
-      tf_trans[1] = -tf_trans[1]
+#      tf_trans[0] = -tf_trans[0]
+#      tf_trans[1] = -tf_trans[1]
 
       self.tf_pub.sendTransform(tf_trans,
               tf_rot,

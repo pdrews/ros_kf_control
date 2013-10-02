@@ -6,8 +6,13 @@
     <param name="corners_y" type="int" value="4" />
     <param name="spacing_x" type="double" value="0.25" />
     <param name="spacing_y" type="double" value="0.25" />
+    <param name="baseframe" type="string" value="/frontCamera" />
+    <param name="kp" type="double" value="10000.0" />
+    <param name="mixratio" type="double" value="1.0" />
     <remap from="image_stream" to="/vrep/visionSensor" />
     <remap from="camera_info" to="/vrep/visionSensorInfo" />
+    <remap from="imu_rate" to="/vrep/twistStatus" />
+    <remap from="pan_rate" to="/vrep/panCommand" />
   </node>
 
 </launch>
