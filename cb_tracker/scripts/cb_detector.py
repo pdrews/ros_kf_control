@@ -90,10 +90,10 @@ class ImageCbDetector:
 
       #uncomment to debug chessboard detection
       rospy.loginfo( 'Chessboard found')
-      cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
-      cv.NamedWindow("image_scaled")
-      cv.ShowImage("image_scaled", image_scaled)
-      cv.WaitKey(600)
+#      cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
+#      cv.NamedWindow("image_scaled")
+#      cv.ShowImage("image_scaled", image_scaled)
+#      cv.WaitKey(600)
 
       object_points = None
 
@@ -266,6 +266,22 @@ class ImageCbDetectorNode:
         #rotate our orientation so that the ROS and CV axis match
 #        tf_rot = tf_sim * tf_rot
         rospy.loginfo("Running in sim mode")
+      
+      else:
+        x_t = tf_trans[0]
+        y_t = tf_trans[1]
+        z_t = tf_trans[2]
+        tf_trans[0] = z_t
+        tf_trans[1] = -x_t
+        tf_trans[2] = -y_t
+        x_t = tf_rot[0]
+        y_t = tf_rot[1]
+        z_t = tf_rot[2]
+        tf_rot[0] = z_t
+        tf_rot[1] = -x_t
+        tf_rot[2] = -y_t
+
+
 
       self.tf_pub.sendTransform(tf_trans,
               tf_rot,

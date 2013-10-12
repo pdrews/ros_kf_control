@@ -10,8 +10,6 @@
     <param name="sim_mode" type="bool" value="true" />
     <remap from="image_stream" to="/vrep/visionSensor" />
     <remap from="camera_info" to="/vrep/visionSensorInfo" />
-    <remap from="imu_rate" to="/vrep/twistStatus" />
-    <remap from="pan_rate" to="/vrep/panCommand" />
   </node>
 
 </launch>
