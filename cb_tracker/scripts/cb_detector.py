@@ -49,13 +49,10 @@ import tf
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TransformStamped
-from geometry_msgs.msg import TwistStamped
 from std_msgs.msg import Int32
 
 from cv_bridge import CvBridge, CvBridgeError
 #from kf_code.srv import GetCheckerboardPose, GetCheckerboardPoseResponse
-
-global_x_error = 0
 
 class ImageCbDetector:
   def get_board_corners(self, corners, corners_x, corners_y):
@@ -64,7 +61,6 @@ class ImageCbDetector:
 
   def detect(self, image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling):
     #resize the image base on the scaling parameters we've been configured with
-    global global_x_error
     scaled_width = int(.5 + image.width * width_scaling)
     scaled_height = int(.5 + image.height * height_scaling)
     
@@ -77,11 +73,6 @@ class ImageCbDetector:
 
     if found:
       board_corners = self.get_board_corners(corners, corners_x, corners_y)
-
-      #find the x center for visual servoing
-      global_x_error = (scaled_width / 2.0) - board_corners[0][0] + 0.5 * (board_corners[0][0] - board_corners[3][0])
-      global_x_error = global_x_error / (scaled_width / 2.0)
-      rospy.loginfo ("x_error is %d", global_x_error);
       
       #find the perimeter of the checkerboard
       perimeter = 0.0
@@ -98,11 +89,11 @@ class ImageCbDetector:
       corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS | cv.CV_TERMCRIT_ITER, 30, 0.1))
 
       #uncomment to debug chessboard detection
-      # rospy.logwarn( 'Chessboard found')
-      # cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
-      # cv.NamedWindow("image_scaled")
-      # cv.ShowImage("image_scaled", image_scaled)
-      # cv.WaitKey(600)
+      rospy.loginfo( 'Chessboard found')
+      cv.DrawChessboardCorners(image_scaled, (corners_x, corners_y), corners, 1)
+      cv.NamedWindow("image_scaled")
+      cv.ShowImage("image_scaled", image_scaled)
+      cv.WaitKey(600)
 
       object_points = None
 
@@ -118,7 +109,7 @@ class ImageCbDetector:
 
       #not sure why opencv functions return non opencv compatible datatypes... but they do so we'll convert
       corners_cv = cv.CreateMat(2, corners_x * corners_y, cv.CV_32FC1)
-      rospy.logwarn("Assigned the corners matrix %d", (corners_cv == None))
+      #rospy.logwarn("Assigned the corners matrix %d", (corners_cv == None))
       for i in range(corners_x * corners_y):
         cv.SetReal2D(corners_cv, 0, i, corners[i][0])
         cv.SetReal2D(corners_cv, 1, i, corners[i][1])
@@ -129,7 +120,7 @@ class ImageCbDetector:
       #cv.NamedWindow("image_scaled")
       #cv.ShowImage("image_scaled", image_scaled)
       #cv.WaitKey(600)
-      rospy.logwarn("Didn't find checkerboard")
+      rospy.loginfo("Didn't find checkerboard")
       return (None, None)
 
 class ImageCbDetectorNode:
@@ -141,8 +132,7 @@ class ImageCbDetectorNode:
     self.width_scaling = rospy.get_param('~width_scaling', 1)
     self.height_scaling = rospy.get_param('~height_scaling', 1)
     self.base_frame = rospy.get_param('~baseframe', "/world")
-    self.mixRatio = rospy.get_param('~mixratio', 1.0)
-    self.kp = rospy.get_param("~kp", 100.0)
+    self.sim_mode = rospy.get_param('sim_mode', False)
 
     self.im_cb_detector = ImageCbDetector()
 
@@ -151,13 +141,12 @@ class ImageCbDetectorNode:
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
     self.tf_pub = tf.TransformBroadcaster()
     self.pan_pub = rospy.Publisher("pan_rate", Int32)
-    self.pan_sub = rospy.Subscriber("imu_rate", TwistStamped, self.imu_callback)
+    self.pan_sub = rospy.Publisher("pan_position", Int32, self.pan_callback)
     self.pose_calc = rospy.Timer(rospy.Duration(1.0), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
     self.mutex = threading.RLock()
     self.cam_info = None
     self.ros_image = None
-    self.lastAngular = 0.0
 
   def intrinsic_matrix_from_info(self, cam_info):
     intrinsic_matrix = cv.CreateMat(3, 3, cv.CV_32FC1)
@@ -187,20 +176,17 @@ class ImageCbDetectorNode:
 #      if self.pose_srv == None:
 #        self.attempt_to_advertise()
 
-  def imu_callback(self, pose):
-    output = global_x_error + self.mixRatio * pose.twist.angular.z
-    output = output * self.kp
-    rospy.logwarn("servo error %f rate error %f", global_x_error, (pose.twist.angular.z - self.lastAngular))
-    self.pan_pub.publish(std_msgs.Int32(output))
-    self.lastAngular = pose.twist.angular.z
+  def pan_callback(self, pan_pose):
+    output = self.pan_setpoint - pan_pose
+    self.pan_pub.publish(output)
     
 
 #  def find_checkerboard_service(self, req):
   def find_checkerboard_timer_callback(self, event):
     #copy the image over
-    rospy.logwarn ('Starting cb detection')
+    rospy.loginfo ('Starting cb detection')
     if self.ros_image == None:
-      rospy.logwarn( 'No Image!')
+      rospy.loginfo( 'No Image!')
       return
     with self.mutex:
       image = self.ros_image
@@ -218,7 +204,7 @@ class ImageCbDetectorNode:
 
     corners, model = self.im_cb_detector.detect(image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling)
 
-    rospy.logwarn("%d %d %d", (corners == None), (model == None), (self.cam_info == None))
+    rospy.loginfo("%d %d %d", (corners == None), (model == None), (self.cam_info == None))
     if corners != None and model != None and self.cam_info != None:
       #find the pose of the checkerboard
       rot = cv.CreateMat(3, 1, cv.CV_32FC1)
@@ -250,8 +236,8 @@ class ImageCbDetectorNode:
       #and make sure to add a 1 in the lower right corner
       full_pose[3][3] = 1.0
 
-      rospy.logdebug("%s" % numpy_mat)
-      rospy.logdebug("%s" % full_pose)
+      #rospy.loginfo("%s" % numpy_mat)
+      #rospy.loginfo("%s" % full_pose)
 
       tf_trans = tf.transformations.translation_from_matrix(full_pose)
       tf_rot = tf.transformations.quaternion_from_matrix(full_pose)
@@ -266,7 +252,7 @@ class ImageCbDetectorNode:
       board_pose.pose.orientation.y = tf_rot[1]
       board_pose.pose.orientation.z = tf_rot[2]
       board_pose.pose.orientation.w = tf_rot[3]
-      rospy.logdebug("%s" % board_pose)
+      rospy.loginfo("%s" % board_pose)
 
 #      board_tf = TransformStamped()
 #      board_tf.header = ros_image.header
@@ -282,11 +268,12 @@ class ImageCbDetectorNode:
 
       #we'll publish the pose so we can display it in rviz
       self.pose_pub.publish(board_pose)
-      rospy.logwarn( 'Publishing transform')
+      rospy.loginfo( 'Publishing transform')
 
-      #Correct board_pose transform axis, x and y are reversed
-#      tf_trans[0] = -tf_trans[0]
-#      tf_trans[1] = -tf_trans[1]
+      #Correct board_pose transform axis, x and y are reversed in the sim
+      if (self.sim_mode):
+        tf_trans[0] = -tf_trans[0]
+        tf_trans[1] = -tf_trans[1]
 
       self.tf_pub.sendTransform(tf_trans,
               tf_rot,
