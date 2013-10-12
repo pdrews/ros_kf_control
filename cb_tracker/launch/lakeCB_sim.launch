@@ -4,11 +4,10 @@
         type="cb_detector.py" name="cb_detector" output="screen">
     <param name="corners_x" type="int" value="4" />
     <param name="corners_y" type="int" value="4" />
-    <param name="spacing_x" type="double" value="0.25" />
-    <param name="spacing_y" type="double" value="0.25" />
+    <param name="spacing_x" type="double" value="0.20" />
+    <param name="spacing_y" type="double" value="0.20" />
     <param name="baseframe" type="string" value="/frontCamera" />
-    <param name="kp" type="double" value="10000.0" />
-    <param name="mixratio" type="double" value="1.0" />
+    <param name="sim_mode" type="bool" value="true" />
     <remap from="image_stream" to="/vrep/visionSensor" />
     <remap from="camera_info" to="/vrep/visionSensorInfo" />
     <remap from="imu_rate" to="/vrep/twistStatus" />

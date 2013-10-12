@@ -132,7 +132,7 @@ class ImageCbDetectorNode:
     self.width_scaling = rospy.get_param('~width_scaling', 1)
     self.height_scaling = rospy.get_param('~height_scaling', 1)
     self.base_frame = rospy.get_param('~baseframe', "/world")
-    self.sim_mode = rospy.get_param('sim_mode', False)
+    self.sim_mode = rospy.get_param('~sim_mode', False)
 
     self.im_cb_detector = ImageCbDetector()
 
@@ -140,9 +140,7 @@ class ImageCbDetectorNode:
     self.caminfo_sub = rospy.Subscriber("camera_info", CameraInfo, self.cam_info_cb) 
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
     self.tf_pub = tf.TransformBroadcaster()
-    self.pan_pub = rospy.Publisher("pan_rate", Int32)
-    self.pan_sub = rospy.Publisher("pan_position", Int32, self.pan_callback)
-    self.pose_calc = rospy.Timer(rospy.Duration(1.0), self.find_checkerboard_timer_callback)
+    self.pose_calc = rospy.Timer(rospy.Duration(0.2), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
     self.mutex = threading.RLock()
     self.cam_info = None
@@ -158,28 +156,15 @@ class ImageCbDetectorNode:
 
     return intrinsic_matrix
 
-#  def attempt_to_advertise(self):
-    #we'll only advertise the service after we've received a cam_info/image pair
-#    if self.ros_image != None and self.cam_info != None:
-#      self.pose_srv = rospy.Service("get_checkerboard_pose", GetCheckerboardPose, self.find_checkerboard_service)
-
   def cam_info_cb(self, cam_info):
     with self.mutex:
       self.cam_info = cam_info
-#      if self.pose_srv == None:
-#        self.attempt_to_advertise()
 
   def callback(self, ros_image):
     #copy over the latest image to be used when a service call is made
     with self.mutex:
       self.ros_image = ros_image
-#      if self.pose_srv == None:
-#        self.attempt_to_advertise()
 
-  def pan_callback(self, pan_pose):
-    output = self.pan_setpoint - pan_pose
-    self.pan_pub.publish(output)
-    
 
 #  def find_checkerboard_service(self, req):
   def find_checkerboard_timer_callback(self, event):
@@ -241,6 +226,8 @@ class ImageCbDetectorNode:
 
       tf_trans = tf.transformations.translation_from_matrix(full_pose)
       tf_rot = tf.transformations.quaternion_from_matrix(full_pose)
+#      tf_sim = tf.transformations.quaternion_about_axis(math.pi, (0,0,1))
+#      rospy.loginfo("%s" % tf_sim)
 
       #and now we'll actually build our pose stamped
       board_pose = PoseStamped()
@@ -274,6 +261,11 @@ class ImageCbDetectorNode:
       if (self.sim_mode):
         tf_trans[0] = -tf_trans[0]
         tf_trans[1] = -tf_trans[1]
+        tf_rot[0] = -tf_rot[0]
+        tf_rot[1] = -tf_rot[1]
+        #rotate our orientation so that the ROS and CV axis match
+#        tf_rot = tf_sim * tf_rot
+        rospy.loginfo("Running in sim mode")
 
       self.tf_pub.sendTransform(tf_trans,
               tf_rot,
