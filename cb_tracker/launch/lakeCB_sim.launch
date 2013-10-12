@@ -1,7 +1,7 @@
 <launch>
 
   <node pkg="cb_tracker"
-        type="cb_detector.py" name="cb_detector" >
+        type="cb_detector.py" name="cb_detector" output="screen">
     <param name="corners_x" type="int" value="4" />
     <param name="corners_y" type="int" value="4" />
     <param name="spacing_x" type="double" value="0.25" />
