@@ -50,6 +50,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Int32
+from std_msgs.msg import Float32
 
 from cv_bridge import CvBridge, CvBridgeError
 #from kf_code.srv import GetCheckerboardPose, GetCheckerboardPoseResponse
@@ -81,6 +82,27 @@ class ImageCbDetector:
         xdiff = board_corners[i][0] - board_corners[next][0]
         ydiff = board_corners[i][1] - board_corners[next][1]
         perimeter += math.sqrt(xdiff * xdiff + ydiff * ydiff)
+
+      #Fiture out how close the checkerboard is to the edges
+      min_dist = scaled_width + scaled_height
+      total = scaled_width
+      rospy.loginfo("scaled_width %f scaled_height %f", scaled_width, scaled_height)
+      for i in range(len(board_corners)):
+        rospy.loginfo("x %f y %f", board_corners[i][0], board_corners[i][1])
+        if(board_corners[i][0] < min_dist):
+            min_dist = board_corners[i][0]
+            total = scaled_width
+        if(scaled_width - board_corners[i][0] < min_dist):
+            min_dist = scaled_width - board_corners[i][0]
+            total = scaled_width
+        if(board_corners[i][1] < min_dist):
+            min_dist = board_corners[i][1]
+            total = scaled_height
+        if(scaled_height - board_corners[i][1] < min_dist):
+            min_dist = scaled_height - board_corners[i][1]
+            total = scaled_height
+
+      min_dist = min_dist / total
 
       #estimate the square size in pixels
       square_size = perimeter / ((corners_x - 1 + corners_y - 1) * 2)
@@ -114,14 +136,14 @@ class ImageCbDetector:
         cv.SetReal2D(corners_cv, 0, i, corners[i][0])
         cv.SetReal2D(corners_cv, 1, i, corners[i][1])
 
-      return (corners_cv, object_points)
+      return (min_dist, corners_cv, object_points)
 
     else:
       #cv.NamedWindow("image_scaled")
       #cv.ShowImage("image_scaled", image_scaled)
       #cv.WaitKey(600)
       rospy.loginfo("Didn't find checkerboard")
-      return (None, None)
+      return (None, None, None)
 
 class ImageCbDetectorNode:
   def __init__(self):
@@ -139,6 +161,7 @@ class ImageCbDetectorNode:
     self.image_sub = rospy.Subscriber("image_stream", Image, self.callback)
     self.caminfo_sub = rospy.Subscriber("camera_info", CameraInfo, self.cam_info_cb) 
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
+    self.limits_pub = rospy.Publisher("board_limit", Float32)
     self.tf_pub = tf.TransformBroadcaster()
     self.pose_calc = rospy.Timer(rospy.Duration(0.2), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
@@ -187,8 +210,10 @@ class ImageCbDetectorNode:
       rospy.logerror("Error importing image %s" % e)
       return
 
-    corners, model = self.im_cb_detector.detect(image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling)
+    cb_edge_dist, corners, model = self.im_cb_detector.detect(image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling)
 
+    if (cb_edge_dist != None):
+        self.limits_pub.publish(cb_edge_dist)
     rospy.loginfo("%d %d %d", (corners == None), (model == None), (self.cam_info == None))
     if corners != None and model != None and self.cam_info != None:
       #find the pose of the checkerboard
@@ -239,7 +264,7 @@ class ImageCbDetectorNode:
       board_pose.pose.orientation.y = tf_rot[1]
       board_pose.pose.orientation.z = tf_rot[2]
       board_pose.pose.orientation.w = tf_rot[3]
-      rospy.loginfo("%s" % board_pose)
+#      rospy.loginfo("%s" % board_pose)
 
 #      board_tf = TransformStamped()
 #      board_tf.header = ros_image.header

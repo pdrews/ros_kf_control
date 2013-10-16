@@ -1,0 +1,17 @@
+<launch>
+
+  <node pkg="cb_tracker"
+        type="follow_controller.py" name="follow_controller" output="screen">
+    <param name="corners_x" type="int" value="4" />
+    <param name="corners_y" type="int" value="4" />
+    <param name="spacing_x" type="double" value="0.20" />
+    <param name="spacing_y" type="double" value="0.20" />
+    <param name="kp_x" type="double" value="2.5" />
+    <param name="baseframe" type="string" value="/frontCamera" />
+    <param name="sim_mode" type="bool" value="true" />
+    <remap from="/follow_controller/rateOut" to="/vrep/panCommand" />
+    <remap from="/follow_controller/cbSize" to="/board_limit" />
+
+  </node>
+
+</launch>
