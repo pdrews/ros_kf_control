@@ -1,18 +1,17 @@
 <launch>
 
   <node pkg="cb_tracker"
-        type="cb_detector.py" name="cb_detector" output="screen">
+        type="follow_controller.py" name="follow_controller" output="screen">
     <param name="corners_x" type="int" value="6" />
     <param name="corners_y" type="int" value="8" />
     <param name="spacing_x" type="double" value="0.036" />
     <param name="spacing_y" type="double" value="0.036" />
     <param name="/use_sim_time" type="bool" value="true" />
+    <param name="kp_x" type="double" value="2.5" />
     <param name="baseframe" type="string" value="/kingfisher/axis" />
-    <remap from="image_stream" to="/axis/image_decomp" />
-    <remap from="camera_info" to="/axis/camera_info" />
+    <param name="sim_mode" type="bool" value="true" />
+    <remap from="/follow_controller/cbSize" to="/board_limit" />
+
   </node>
-
-  <node pkg="image_transport" type="republish" name="img_repub" args="compressed in:=axis/image_raw raw out:=axis/image_decomp" />
-
 
 </launch>
