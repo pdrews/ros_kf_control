@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/Imu.h>
+#include <geometry_msgs/Point.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <time.h>
@@ -13,6 +14,7 @@ class AngularRateControl {
         ros::Subscriber imu_sub_;
         ros::Subscriber cmd_sub_;
         ros::Publisher motor_pub_;
+        ros::Publisher debug_pub_;
         tf::TransformListener listener_;
         ros::Timer pid_loop_;
 
@@ -51,10 +53,17 @@ class AngularRateControl {
         void do_pid(const ros::TimerEvent&)
         {
             geometry_msgs::Twist output;
+            geometry_msgs::Point pt;
+            double x, y, z;
             //Make sure we keep the rest of the output the same.
             output = setpt_;
             // Correct for the sign of the output
             output.angular.z = -commandZ_;
+            Pid_.getCurrentPIDErrors(&x, &y, &z);
+            pt.x = x;
+            pt.y = y;
+            pt.z = z;
+            debug_pub_.publish(pt);
             motor_pub_.publish(output);            
         }
 
@@ -80,6 +89,7 @@ class AngularRateControl {
             imu_sub_ = nh_.subscribe("imu",1,&AngularRateControl::imu_callback,this);
             cmd_sub_ = nh_.subscribe("command",1,&AngularRateControl::cmd_callback,this);
             motor_pub_ = nh_.advertise<geometry_msgs::Twist>("motors",1);
+            debug_pub_ = nh_.advertise<geometry_msgs::Point>("debug",1);
             //Create a callback for the PID loop
             pid_loop_ = nh_.createTimer(ros::Duration(period_), &AngularRateControl::do_pid, this);
 
