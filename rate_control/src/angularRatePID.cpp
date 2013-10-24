@@ -28,6 +28,7 @@ class AngularRateControl {
         double commandZ_;
         double kp_, ki_, kd_, imax_;
         double period_;
+        double motor_zero_;
         ros::Time lastIMU_;
 
 
@@ -59,6 +60,10 @@ class AngularRateControl {
             output = setpt_;
             // Correct for the sign of the output
             output.angular.z = -commandZ_;
+            if(output.angular.z > 0)
+                output.angular.z = output.angular.z + motor_zero_;
+            else
+                output.angular.z = output.angular.z - motor_zero_;
             Pid_.getCurrentPIDErrors(&x, &y, &z);
             pt.x = x;
             pt.y = y;
@@ -70,6 +75,7 @@ class AngularRateControl {
         void config_callback(rate_control::RateControlConfig &config, uint32_t level)
         {
             Pid_.setGains(config.kp, config.ki, config.kd, config.imax, -config.imax);
+            motor_zero_ = config.motor_zero;
         }
 
     public:
@@ -79,6 +85,7 @@ class AngularRateControl {
             nh_.param("kd",kd_,0.0);
             nh_.param("imax",imax_,1E9);
             nh_.param("period",period_,0.05);
+            nh_.param("motor_zero",motor_zero_,0.0);
 
             Pid_.initPid(kp_,ki_,kd_,imax_,-imax_);
 
