@@ -29,6 +29,7 @@ class AngularRateControl {
         double kp_, ki_, kd_, imax_;
         double period_;
         double motor_zero_;
+        double input_scale_;
         ros::Time lastIMU_;
 
 
@@ -49,6 +50,7 @@ class AngularRateControl {
         
         void cmd_callback(const geometry_msgs::Twist& msg) {
             setpt_ = msg;
+            setpt_.angular.z = setpt_.angular.z * input_scale_;
         }
 
         void do_pid(const ros::TimerEvent&)
@@ -76,6 +78,7 @@ class AngularRateControl {
         {
             Pid_.setGains(config.kp, config.ki, config.kd, config.imax, -config.imax);
             motor_zero_ = config.motor_zero;
+            input_scale_ = config.input_scale;
         }
 
     public:
@@ -86,6 +89,7 @@ class AngularRateControl {
             nh_.param("imax",imax_,1E9);
             nh_.param("period",period_,0.05);
             nh_.param("motor_zero",motor_zero_,0.0);
+            nh_.param("input_scale",input_scale_,1.0);
 
             Pid_.initPid(kp_,ki_,kd_,imax_,-imax_);
 
