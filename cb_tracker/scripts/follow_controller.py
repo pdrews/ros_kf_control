@@ -36,7 +36,7 @@ class cbTracker:
         self.sizekp = rospy.get_param('~size_kp', 1.0)
         self.baseframe = rospy.get_param('~baseframe', "/world")
         self.cb_timeout = rospy.get_param('~timeout', 2.0)
-        self.imuScale = rospy.get_param('~imu_scale', 0.0)
+        self.imuscale = rospy.get_param('~imu_scale', 0.0)
         self.pub = rospy.Publisher("~twistOut",Twist)
         self.pubsim = rospy.Publisher("~rateOut",Float64)
         rospy.Subscriber("~cbSize",Float32,self.store_cbsize)
@@ -57,7 +57,7 @@ class cbTracker:
         #cbSize is actually the distance from the edge of the board to the edge of the camera frame
         self.cbsize = data.data
 
-        def store_imu(self, data):
+    def store_imu(self, data):
         self.imuz = data.angular_velocity.z
 
     def run(self):
@@ -83,20 +83,20 @@ class cbTracker:
                 pt.point.x =  -(self.nx / 2.0) * self.widthx
                 pt.point.y =  -(self.ny / 2.0) * self.widthy
             pt = self.tfl.transformPoint(self.baseframe, pt)
-            rospy.loginfo("cbsize %f sizesetpt %f sizekp %f", self.cbsize, self.sizesetpt, self.sizekp)
+#            rospy.loginfo("cbsize %f sizesetpt %f sizekp %f", self.cbsize, self.sizesetpt, self.sizekp)
             out.linear.x = (self.cbsize - self.sizesetpt) * self.sizekp 
             if (self.simmode):
                 out.angular.z = self.kp_x * math.atan2(pt.point.x, pt.point.z)
                 #rospy.loginfo("Rate: %f", out.angular.z)
             else:
-                out.angular.z = (self.kp_x * math.atan2(pt.point.y, pt.point.x)) + (imu_scale * self.imuz)
+                out.angular.z = (self.kp_x * math.atan2(pt.point.y, pt.point.x)) + (self.imuscale * self.imuz)
                 #rospy.loginfo("Rate: %f", out.angular.z)
 
             if (lastTime < (rospy.Time.now() - rospy.Duration(self.cb_timeout))):
                 # If we loose the checkerboard, keep slewing but zoom out
                 rospy.loginfo("Lost the checkerboard, now %f lastTime %f", rospy.Time.now().to_sec(), lastTime.to_sec())
                 out.linear.x = -1.0
-            rospy.loginfo("zoom = %f", out.linear.x)
+            rospy.loginfo("z = %f imu = %f", out.angular.z, self.imuz)
             # For now, don't zoom anywhere
             out.linear.x = 0.0
             self.pub.publish(out)

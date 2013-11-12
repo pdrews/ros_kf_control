@@ -6,7 +6,7 @@
     <param name="corners_y" type="int" value="8" />
     <param name="spacing_x" type="double" value="0.036" />
     <param name="spacing_y" type="double" value="0.036" />
-    <param name="baseframe" type="string" value="axis/pan" />
+    <param name="baseframe" type="string" value="kingfisher/pan" />
     <remap from="image_stream" to="/axis/image_decomp" />
     <remap from="camera_info" to="/axis/camera_info" />
   </node>

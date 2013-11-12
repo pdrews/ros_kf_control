@@ -108,7 +108,7 @@ class ImageCbDetector:
       square_size = perimeter / ((corners_x - 1 + corners_y - 1) * 2)
       radius = int(square_size * 0.5 + 0.5)
 
-      corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS | cv.CV_TERMCRIT_ITER, 30, 0.1))
+#      corners = cv.FindCornerSubPix(image_scaled, corners, (radius, radius), (-1, -1), (cv.CV_TERMCRIT_EPS | cv.CV_TERMCRIT_ITER, 30, 0.1))
 
       #uncomment to debug chessboard detection
       rospy.loginfo( 'Chessboard found')
@@ -158,12 +158,13 @@ class ImageCbDetectorNode:
 
     self.im_cb_detector = ImageCbDetector()
 
-    self.image_sub = rospy.Subscriber("image_stream", Image, self.callback)
+    self.image_sub = rospy.Subscriber("image_stream", Image, self.callback,
+            queue_size=1, tcp_nodelay = True)
     self.caminfo_sub = rospy.Subscriber("camera_info", CameraInfo, self.cam_info_cb) 
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
     self.limits_pub = rospy.Publisher("board_limit", Float32)
     self.tf_pub = tf.TransformBroadcaster()
-    self.pose_calc = rospy.Timer(rospy.Duration(0.2), self.find_checkerboard_timer_callback)
+    self.pose_calc = rospy.Timer(rospy.Duration(0.8), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
     self.mutex = threading.RLock()
     self.cam_info = None
@@ -186,6 +187,7 @@ class ImageCbDetectorNode:
   def callback(self, ros_image):
     #copy over the latest image to be used when a service call is made
     with self.mutex:
+      rospy.loginfo('Received at time %f', ros_image.header.stamp.to_sec())
       self.ros_image = ros_image
 
 
@@ -198,6 +200,9 @@ class ImageCbDetectorNode:
       return
     with self.mutex:
       image = self.ros_image
+
+    rospy.loginfo('Detecting with image time %f time %f',
+            image.header.stamp.to_sec(), rospy.get_time())
 
     pose = self.find_checkerboard_pose(image, self.corners_x, self.corners_y, self.spacing_x, self.spacing_y, self.width_scaling, self.height_scaling)
     return
