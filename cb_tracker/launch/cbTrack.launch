@@ -7,10 +7,12 @@
     <param name="spacing_x" type="double" value="0.036" />
     <param name="spacing_y" type="double" value="0.036" />
     <param name="kp_x" type="double" value="2.5" />
-    <param name="baseframe" type="string" value="/kingfisher/axis" />
+    <param name="imu_scale" type="double" value="0.0" />
+    <param name="baseframe" type="string" value="/kingfisher/pan" />
     <param name="sim_mode" type="bool" value="true" />
     <remap from="/follow_controller/cbSize" to="/board_limit" />
-    <remap from="/follow_controller/twistOut" to="/axis/input" />
+    <remap from="/follow_controller/twistOut" to="/axis/twist" />
+    <remap from="/follow_controller/IMU" to="/imu/data" />
 
   </node>
 
