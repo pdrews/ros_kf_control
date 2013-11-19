@@ -100,10 +100,8 @@ class AngularRateControl {
             debug_pub_.publish(pt);
             if(!manual_override_ && !rc_override_){
                 motor_pub_.publish(output);            
-                ROS_ERROR("Publishing.  manual %d rc %d", manual_override_, rc_override_);
             } else {
                 Pid_.reset();
-                ROS_ERROR("Resetting error.  manual %d rc %d", manual_override_, rc_override_);
             }
         }
 
