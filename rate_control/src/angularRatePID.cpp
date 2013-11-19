@@ -1,18 +1,23 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/Imu.h>
+#include <kingfisher_msgs/Sense.h>
 #include <geometry_msgs/Point.h>
+#include <std_msgs/String.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <time.h>
 #include <pid.h>
 #include <dynamic_reconfigure/server.h>
 #include <rate_control/RateControlConfig.h>
+#include <iostream>
 
 class AngularRateControl {
     protected:
         ros::Subscriber imu_sub_;
         ros::Subscriber cmd_sub_;
+        ros::Subscriber mux_sub_;
+        ros::Subscriber rc_sub_;
         ros::Publisher motor_pub_;
         ros::Publisher debug_pub_;
         tf::TransformListener listener_;
@@ -32,6 +37,9 @@ class AngularRateControl {
         double input_scale_;
         ros::Time lastIMU_;
 
+        std::string joy_control_;
+        std::string auto_control_;
+        bool manual_override_, rc_override_;
 
         dynamic_reconfigure::Server<rate_control::RateControlConfig> server_;
         dynamic_reconfigure::Server<rate_control::RateControlConfig>::CallbackType f_;
@@ -52,6 +60,25 @@ class AngularRateControl {
             setpt_ = msg;
             setpt_.angular.z = setpt_.angular.z * input_scale_;
         }
+        
+        void mux_callback(const std_msgs::String::ConstPtr& msg) {
+            if (msg->data == joy_control_) {
+                manual_override_ = true;
+            } else if (msg->data == auto_control_) {
+                manual_override_ = false;
+            } else {
+                ROS_ERROR("Received unknown mux selection: '%s'",msg->data.c_str());
+            }
+
+        }
+        
+        void rc_callback(const kingfisher_msgs::Sense::ConstPtr& msg) {
+            if (msg->rc & 0x02) {
+                rc_override_ = true;
+            } else {
+                rc_override_ = false;
+            }
+        }
 
         void do_pid(const ros::TimerEvent&)
         {
@@ -71,7 +98,11 @@ class AngularRateControl {
             pt.y = y;
             pt.z = z;
             debug_pub_.publish(pt);
-            motor_pub_.publish(output);            
+            if(!manual_override_ && !rc_override_){
+                motor_pub_.publish(output);            
+            } else {
+                Pid_.reset();
+            }
         }
 
         void config_callback(rate_control::RateControlConfig &config, uint32_t level)
@@ -82,7 +113,10 @@ class AngularRateControl {
         }
 
     public:
-        AngularRateControl() : nh_("~"),lastIMU_(0.0) {
+        AngularRateControl() : nh_("~"),lastIMU_(0.0),
+        joy_control_("/teleop/twistCommand"), auto_control_("/mux/autoCommand"),
+        manual_override_(false), rc_override_(true)
+         {
             nh_.param("kp",kp_,1.0);
             nh_.param("ki",ki_,0.0);
             nh_.param("kd",kd_,0.0);
@@ -99,6 +133,8 @@ class AngularRateControl {
             // Subscribe to the velocity command and setup the motor publisher
             imu_sub_ = nh_.subscribe("imu",1,&AngularRateControl::imu_callback,this);
             cmd_sub_ = nh_.subscribe("command",1,&AngularRateControl::cmd_callback,this);
+            mux_sub_ = nh_.subscribe("/mux/selected",1,&AngularRateControl::mux_callback,this);
+            rc_sub_ = nh_.subscribe("/sense",1,&AngularRateControl::rc_callback,this);
             motor_pub_ = nh_.advertise<geometry_msgs::Twist>("motors",1);
             debug_pub_ = nh_.advertise<geometry_msgs::Point>("debug",1);
             //Create a callback for the PID loop
