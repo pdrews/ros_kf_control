@@ -6,7 +6,7 @@
     <param name="ki" value="0.2"/>
     <param name="period" value="0.04"/>
     <param name="imax" value="1"/>
-    <param name="motor_zero" value="0.23"/>
+    <param name="motor_zero" value="0.0"/>
     <remap from="/kf_ratecontrol/motors" to="/cmd_vel"/>
     <remap from="/kf_ratecontrol/command" to="/cmd_mux/cmd_vel"/>
     <remap from="/kf_ratecontrol/imu" to="/imu/data"/>

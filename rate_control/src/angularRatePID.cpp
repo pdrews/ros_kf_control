@@ -100,8 +100,10 @@ class AngularRateControl {
             debug_pub_.publish(pt);
             if(!manual_override_ && !rc_override_){
                 motor_pub_.publish(output);            
+                ROS_ERROR("Publishing.  manual %d rc %d", manual_override_, rc_override_);
             } else {
                 Pid_.reset();
+                ROS_ERROR("Resetting error.  manual %d rc %d", manual_override_, rc_override_);
             }
         }
 
@@ -114,7 +116,7 @@ class AngularRateControl {
 
     public:
         AngularRateControl() : nh_("~"),lastIMU_(0.0),
-        joy_control_("/teleop/twistCommand"), auto_control_("/mux/autoCommand"),
+        joy_control_("/teleop/twistCommand"), auto_control_("/mux/safeCommand"),
         manual_override_(false), rc_override_(true)
          {
             nh_.param("kp",kp_,1.0);
