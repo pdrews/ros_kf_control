@@ -55,6 +55,8 @@ from std_msgs.msg import Float32
 from cv_bridge import CvBridge, CvBridgeError
 #from kf_code.srv import GetCheckerboardPose, GetCheckerboardPoseResponse
 
+LastTime = 0.0
+
 class ImageCbDetector:
   def get_board_corners(self, corners, corners_x, corners_y):
     return (corners[0], corners[corners_x  - 1], 
@@ -72,6 +74,10 @@ class ImageCbDetector:
     #Here, we'll actually call the openCV detector    
     found, corners = cv.FindChessboardCorners(image_scaled, (corners_x, corners_y), cv.CV_CALIB_CB_ADAPTIVE_THRESH)
 
+    global LastTime
+    rospy.loginfo('3: %f', rospy.get_time() - LastTime)
+    LastTime = rospy.get_time()
+    
     if found:
       board_corners = self.get_board_corners(corners, corners_x, corners_y)
       
@@ -86,9 +92,9 @@ class ImageCbDetector:
       #Fiture out how close the checkerboard is to the edges
       min_dist = scaled_width + scaled_height
       total = scaled_width
-      rospy.loginfo("scaled_width %f scaled_height %f", scaled_width, scaled_height)
+      #rospy.loginfo("scaled_width %f scaled_height %f", scaled_width, scaled_height)
       for i in range(len(board_corners)):
-        rospy.loginfo("x %f y %f", board_corners[i][0], board_corners[i][1])
+        #rospy.loginfo("x %f y %f", board_corners[i][0], board_corners[i][1])
         if(board_corners[i][0] < min_dist):
             min_dist = board_corners[i][0]
             total = scaled_width
@@ -128,6 +134,10 @@ class ImageCbDetector:
             cv.SetReal2D(object_points, 0, y*corners_x + x, x * spacing_x)
             cv.SetReal2D(object_points, 1, y*corners_x + x, y * spacing_y)
             cv.SetReal2D(object_points, 2, y*corners_x + x, 0.0)
+      
+
+      rospy.loginfo('4: %f', rospy.get_time() - LastTime)
+      LastTime = rospy.get_time()
 
       #not sure why opencv functions return non opencv compatible datatypes... but they do so we'll convert
       corners_cv = cv.CreateMat(2, corners_x * corners_y, cv.CV_32FC1)
@@ -203,6 +213,9 @@ class ImageCbDetectorNode:
 
     rospy.loginfo('Detecting with image time %f time %f',
             image.header.stamp.to_sec(), rospy.get_time())
+    global LastTime
+    rospy.loginfo('1: %f', rospy.get_time())
+    LastTime = rospy.get_time()
 
     pose = self.find_checkerboard_pose(image, self.corners_x, self.corners_y, self.spacing_x, self.spacing_y, self.width_scaling, self.height_scaling)
     return
@@ -215,11 +228,22 @@ class ImageCbDetectorNode:
       rospy.logerror("Error importing image %s" % e)
       return
 
+    
+    global LastTime
+    rospy.loginfo('2: %f', rospy.get_time() - LastTime)
+    LastTime = rospy.get_time()
+    
     cb_edge_dist, corners, model = self.im_cb_detector.detect(image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling)
 
+    rospy.loginfo('5: %f', rospy.get_time() - LastTime)
+    LastTime = rospy.get_time()
+    
     if (cb_edge_dist != None):
         self.limits_pub.publish(cb_edge_dist)
     rospy.loginfo("%d %d %d", (corners == None), (model == None), (self.cam_info == None))
+
+    rospy.loginfo('6: %f', rospy.get_time() - LastTime)
+    LastTime = rospy.get_time()
     if corners != None and model != None and self.cam_info != None:
       #find the pose of the checkerboard
       rot = cv.CreateMat(3, 1, cv.CV_32FC1)
@@ -230,6 +254,8 @@ class ImageCbDetectorNode:
         cv.Set(kc, 0.0)
         cv.FindExtrinsicCameraParams2(model, corners, intrinsic_matrix, kc, rot, trans)
 
+      rospy.loginfo('7: %f', rospy.get_time() - LastTime)
+      LastTime = rospy.get_time()
       #We want to build a transform now, but first we have to convert the 
       #rotation vector we get back from OpenCV into a rotation matrix
       rot_mat = cv.CreateMat(3, 3, cv.CV_32FC1)
@@ -253,6 +279,9 @@ class ImageCbDetectorNode:
 
       #rospy.loginfo("%s" % numpy_mat)
       #rospy.loginfo("%s" % full_pose)
+
+      rospy.loginfo('8: %f', rospy.get_time() - LastTime)
+      LastTime = rospy.get_time()
 
       tf_trans = tf.transformations.translation_from_matrix(full_pose)
       tf_rot = tf.transformations.quaternion_from_matrix(full_pose)
@@ -285,6 +314,7 @@ class ImageCbDetectorNode:
 
       #we'll publish the pose so we can display it in rviz
       self.pose_pub.publish(board_pose)
+
       rospy.loginfo( 'Publishing transform')
 
       #Correct board_pose transform axis, x and y are reversed in the sim
@@ -319,6 +349,8 @@ class ImageCbDetectorNode:
               "checkerboard",
               self.base_frame)
 
+      rospy.loginfo('9: %f', rospy.get_time() - LastTime)
+      LastTime = rospy.get_time()
       return board_pose
 
 def cb_detector_main(argv=None):
