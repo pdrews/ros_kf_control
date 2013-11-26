@@ -72,9 +72,11 @@ class ImageCbDetector:
     cv.Resize(image, image_scaled, cv.CV_INTER_LINEAR)
 
     #Here, we'll actually call the openCV detector    
+    global LastTime
+    rospy.loginfo('2.5: %f', rospy.get_time() - LastTime)
+    LastTime = rospy.get_time()
     found, corners = cv.FindChessboardCorners(image_scaled, (corners_x, corners_y), cv.CV_CALIB_CB_ADAPTIVE_THRESH)
 
-    global LastTime
     rospy.loginfo('3: %f', rospy.get_time() - LastTime)
     LastTime = rospy.get_time()
     
@@ -165,6 +167,7 @@ class ImageCbDetectorNode:
     self.height_scaling = rospy.get_param('~height_scaling', 1)
     self.base_frame = rospy.get_param('~baseframe', "/world")
     self.sim_mode = rospy.get_param('~sim_mode', False)
+    self.image_time_tolerance = rospy.get_param("~image_time_tolerance", 0.1)
 
     self.im_cb_detector = ImageCbDetector()
 
@@ -174,7 +177,7 @@ class ImageCbDetectorNode:
     self.pose_pub = rospy.Publisher("board_pose", PoseStamped)
     self.limits_pub = rospy.Publisher("board_limit", Float32)
     self.tf_pub = tf.TransformBroadcaster()
-    self.pose_calc = rospy.Timer(rospy.Duration(0.8), self.find_checkerboard_timer_callback)
+#    self.pose_calc = rospy.Timer(rospy.Duration(0.8), self.find_checkerboard_timer_callback)
     self.bridge = CvBridge()
     self.mutex = threading.RLock()
     self.cam_info = None
@@ -196,28 +199,27 @@ class ImageCbDetectorNode:
 
   def callback(self, ros_image):
     #copy over the latest image to be used when a service call is made
+    if (ros_image.header.stamp.to_sec() < (rospy.get_time() - self.image_time_tolerance)):
+      rospy.loginfo('Image %f seconds old', rospy.get_time() - ros_image.header.stamp.to_sec())
+      return
     with self.mutex:
-      rospy.loginfo('Received at time %f', ros_image.header.stamp.to_sec())
       self.ros_image = ros_image
+      self.find_checkerboard()
 
 
 #  def find_checkerboard_service(self, req):
-  def find_checkerboard_timer_callback(self, event):
-    #copy the image over
-    rospy.loginfo ('Starting cb detection')
+  def find_checkerboard(self):
     if self.ros_image == None:
       rospy.loginfo( 'No Image!')
       return
-    with self.mutex:
-      image = self.ros_image
 
     rospy.loginfo('Detecting with image time %f time %f',
-            image.header.stamp.to_sec(), rospy.get_time())
+            self.ros_image.header.stamp.to_sec(), rospy.get_time())
     global LastTime
     rospy.loginfo('1: %f', rospy.get_time())
     LastTime = rospy.get_time()
 
-    pose = self.find_checkerboard_pose(image, self.corners_x, self.corners_y, self.spacing_x, self.spacing_y, self.width_scaling, self.height_scaling)
+    pose = self.find_checkerboard_pose(self.ros_image, self.corners_x, self.corners_y, self.spacing_x, self.spacing_y, self.width_scaling, self.height_scaling)
     return
 
   def find_checkerboard_pose(self, ros_image, corners_x, corners_y, spacing_x, spacing_y, width_scaling, height_scaling):
