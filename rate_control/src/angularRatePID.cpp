@@ -114,7 +114,7 @@ class AngularRateControl {
 
     public:
         AngularRateControl() : nh_("~"),lastIMU_(0.0),
-        joy_control_("/teleop/twistCommand"), auto_control_("/mux/autoCommand"),
+        joy_control_("/teleop/twistCommand"), auto_control_("/mux/safeCommand"),
         manual_override_(false), rc_override_(true)
          {
             nh_.param("kp",kp_,1.0);
