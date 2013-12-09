@@ -6,7 +6,7 @@
     <param name="corners_y" type="int" value="8" />
     <param name="spacing_x" type="double" value="0.036" />
     <param name="spacing_y" type="double" value="0.036" />
-    <param name="kp_x" type="double" value="0.2" />
+    <param name="kp_x" type="double" value="0.35" />
     <param name="imu_scale" type="double" value="1.0" />
     <param name="baseframe" type="string" value="/kingfisher/pan" />
     <param name="sim_mode" type="bool" value="false" />
