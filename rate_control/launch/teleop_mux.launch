@@ -25,7 +25,7 @@
   <node pkg="laser_safety" type="collision_avoidance" name="safety" output="screen">
       <remap from="/safety/pointcloud" to="/vrep/hokuyoSensor"/> <!-- for simulation -->
       <remap from="/safety/scan" to="/lidar/scan"/> <!-- for real -->
-      <remap from="/safety/output" to="/mux/safeCommand"/> 
+      <remap from="/safety/output" to="/kf_ratecontrol/command"/> 
       <remap from="/safety/input" to="/mux/autoCommand"/> 
       <param name="lateral_tolerance" value="1.0"/>
       <param name="allow_reverse" value="true"/>
@@ -35,5 +35,18 @@
       <param name="forward_speed" value="1.0"/>
       <param name="reverse_speed" value="-1.0"/>
   </node>
+
+  <!-- motor node -->
+  <node pkg="rate_control" type="rate_control" name="kf_ratecontrol">
+    <param name="kp" value="3.5"/>
+    <param name="ki" value="0.2"/>
+    <param name="period" value="0.04"/>
+    <param name="imax" value="1"/>
+    <param name="motor_zero" value="0.0"/>
+    <remap from="/kf_ratecontrol/motors" to="/mux/safeCommand"/>
+    <remap from="/kf_ratecontrol/imu" to="/imu/data"/>
+
+  </node>
+
 
 </launch>
