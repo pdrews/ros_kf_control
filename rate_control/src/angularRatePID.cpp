@@ -36,6 +36,8 @@ class AngularRateControl {
         double motor_zero_;
         double input_scale_;
         ros::Time lastIMU_;
+        ros::Time lastCommand_;
+        ros::Duration timeout_;
 
         std::string joy_control_;
         std::string auto_control_;
@@ -58,6 +60,7 @@ class AngularRateControl {
         
         void cmd_callback(const geometry_msgs::Twist& msg) {
             setpt_ = msg;
+            lastCommand_ = ros::Time::now();
             setpt_.angular.z = setpt_.angular.z * input_scale_;
         }
         
@@ -98,7 +101,8 @@ class AngularRateControl {
             pt.y = y;
             pt.z = z;
             debug_pub_.publish(pt);
-            if(!manual_override_ && !rc_override_){
+            if(!manual_override_ && !rc_override_ && 
+               (lastCommand_ + timeout_) > ros::Time::now()){
                 motor_pub_.publish(output);            
             } else {
                 Pid_.reset();
@@ -114,6 +118,7 @@ class AngularRateControl {
 
     public:
         AngularRateControl() : nh_("~"),lastIMU_(0.0),
+        lastCommand_(0.0), timeout_(1.5),
         joy_control_("/teleop/twistCommand"), auto_control_("/mux/safeCommand"),
         manual_override_(false), rc_override_(true)
          {
