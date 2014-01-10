@@ -129,6 +129,9 @@ class AngularRateControl {
             nh_.param("period",period_,0.05);
             nh_.param("motor_zero",motor_zero_,0.0);
             nh_.param("input_scale",input_scale_,1.0);
+            double dTimeout;
+            nh_.param("timeout",dTimeout,1.5);
+            timeout_ = ros::Duration(dTimeout);
 
             Pid_.initPid(kp_,ki_,kd_,imax_,-imax_);
 
