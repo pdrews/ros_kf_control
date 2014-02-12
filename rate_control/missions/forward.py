@@ -11,15 +11,9 @@ server_node = rospy.get_param("~server","/task_server")
 default_period = rospy.get_param("~period",0.05)
 tc = TaskClient(server_node,default_period)
 
-parser = OptionParser()
-parser.add_option("-s",dest="speed", default=0.1
-                  help="Constant forward speed")
-
-(options, args) = parser.parse_args()
-
 tc.WaitForAuto()
 try:
-    tc.Constant(linear=options.speed,angular=0.0,duration=10.0)
+    tc.Constant(linear=0.1,angular=0.0,duration=10.0)
 
 except TaskException, e:
     rospy.logerr("Exception caught: " + str(e))
