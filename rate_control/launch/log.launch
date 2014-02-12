@@ -9,7 +9,6 @@
         /cmd_mux/cmd_vel
         /teleop/twistCommand
         /mux/safeCommand
-        /kf_ratecontrol/command
         /mux/autoCommand
         /diagnostics 
         /gps/extfix 
@@ -33,7 +32,8 @@
         /task_server/angle_status 
         /board_pose
         /board_limit
-        /task_server/dist_status">
+        /task_server/dist_status
+        /kf_ratecontrol/command">
     </node>
 
 </launch>
