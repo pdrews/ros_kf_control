@@ -1,0 +1,5 @@
+
+<launch>
+    <arg name="path" default="/home/bags"/>
+        
+    <node pkg="rosbag" type="filter" <your bagfile> turtlecom.bag 'topic == "/turtle1/command_velocity"'

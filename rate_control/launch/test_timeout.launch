@@ -1,0 +1,15 @@
+<launch>
+
+  <!-- motor node -->
+  <node pkg="rate_control" type="rate_control" name="kf_ratecontrol">
+    <param name="kp" value="3.5"/>
+    <param name="ki" value="0.2"/>
+    <param name="period" value="0.04"/>
+    <param name="imax" value="1"/>
+    <param name="motor_zero" value="0.0"/>
+    <remap from="/kf_ratecontrol/command" to="/cmd_vel"/>
+    <remap from="/kf_ratecontrol/imu" to="/imu/data"/>
+
+  </node>
+
+</launch>

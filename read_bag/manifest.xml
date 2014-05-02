@@ -1,0 +1,24 @@
+<package>
+  <description brief="read_bag">
+
+     read_bag
+
+  </description>
+  <author>paul</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/read_bag</url>
+  <depend package="rosbag"/>
+  <depend package="sensor_msgs"/>
+  <depend package="axis_camera"/>
+  <depend package="kingfisher_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="kf_yaw_kf"/>
+  <depend package="diagnostic_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="cv_bridge"/>
+
+</package>
+
+
